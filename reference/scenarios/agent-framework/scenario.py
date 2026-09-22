@@ -135,6 +135,93 @@ async def run_chat_completion_agent_tool_call():
     print(f"    -> {result.text[:60]}")
 
 
+async def run_agent_tool_rejection_gap():
+    """Probe the telemetry gap when a real tool call is rejected before execution.
+
+    Microsoft Agent Framework exposes the proposed call through
+    user_input_requests when a tool uses approval_mode="always_require".
+    A rejected request never invokes the tool handler. This probe intentionally
+    emits no invented OpenTelemetry signal: it demonstrates that the library
+    has a real pre-execution decision which current GenAI conventions cannot
+    represent directly.
+    """
+    from agent_framework import Agent, Message, tool
+    from agent_framework.observability import enable_sensitive_telemetry
+    from agent_framework.openai import OpenAIChatClient
+
+    print("  [approval_rejection_gap] proposed tool call rejected before execution")
+
+    enable_sensitive_telemetry(force=True)
+    executed = False
+
+    @tool(approval_mode="always_require")
+    def get_weather(
+        location: Annotated[str, "The location to get the weather for."],
+    ) -> str:
+        """Get the weather for a given location."""
+        nonlocal executed
+        executed = True
+        return f"Sunny in {location}"
+
+    client = OpenAIChatClient(
+        model="gpt-4o-mini",
+        base_url=MOCK_BASE_URL,
+        api_key="mock-key",
+    )
+    agent = Agent(
+        client=client,
+        id="weather-agent-approval-gap",
+        name="WeatherAgentApprovalGap",
+        description="Exercises a rejected tool approval boundary.",
+        instructions="Use the weather tool to answer weather questions.",
+        tools=[get_weather],
+    )
+
+    query = "What\'s the weather in Seattle?"
+    result = await agent.run(
+        query,
+        options={
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "max_tokens": 64,
+        },
+    )
+    requests = [
+        request
+        for request in result.user_input_requests
+        if request.function_call is not None
+    ]
+    if not requests:
+        raise RuntimeError(
+            "Agent Framework did not expose the expected tool approval request."
+        )
+
+    approval_request = requests[0]
+    proposed_call = approval_request.function_call
+    print(
+        "    -> approval requested:"
+        f" tool={proposed_call.name}"
+        f" arguments={proposed_call.arguments}"
+    )
+
+    rejection = approval_request.to_function_approval_response(approved=False)
+    await agent.run(
+        [
+            query,
+            Message("assistant", [approval_request]),
+            Message("user", [rejection]),
+        ]
+    )
+
+    if executed:
+        raise AssertionError("Rejected tool approval still executed the handler.")
+
+    print(
+        "    -> rejected before handler execution;"
+        " current GenAI telemetry has no admission-decision signal for this fact"
+    )
+
+
 async def run_agent_workflow():
     """Scenario: Agent Framework workflow execution with native telemetry."""
     from agent_framework import Agent, WorkflowBuilder
@@ -185,6 +272,7 @@ def main():
     asyncio.run(run_agent_tool_call())
     asyncio.run(run_tool_call())
     asyncio.run(run_chat_completion_agent_tool_call())
+    asyncio.run(run_agent_tool_rejection_gap())
     asyncio.run(run_agent_workflow())
 
     flush_and_shutdown(tp, lp, mp)
