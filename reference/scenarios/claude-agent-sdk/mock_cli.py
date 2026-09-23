@@ -38,6 +38,7 @@ def _write_result(*, permission_denials=None) -> None:
 
 
 def handle_line(line: str) -> None:
+    global _permission_probe_pending
     line = line.strip()
     if not line:
         return
@@ -60,7 +61,6 @@ def handle_line(line: str) -> None:
         sys.stdout.flush()
 
     elif msg.get("type") == "user":
-        global _permission_probe_pending
         message = msg.get("message") or {}
         content = message.get("content", "")
         if isinstance(content, list):
@@ -108,7 +108,6 @@ def handle_line(line: str) -> None:
 
 
     elif msg.get("type") == "control_response":
-        global _permission_probe_pending
         response = msg.get("response") or {}
         if (
             _permission_probe_pending
