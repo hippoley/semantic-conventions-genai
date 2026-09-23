@@ -16,7 +16,7 @@ _PERMISSION_PROBE_REQUEST_ID = "permission-probe-1"
 _permission_probe_pending = False
 
 
-def _write_result(*, permission_denials=None) -> None:
+def _write_result(*, permission_denials=None, result_text="Hello! I\'m a mock Claude response.") -> None:
     result = {
         "type": "result",
         "subtype": "success",
@@ -25,7 +25,7 @@ def _write_result(*, permission_denials=None) -> None:
         "is_error": False,
         "num_turns": 1,
         "session_id": "mock-session-001",
-        "result": "Mock run completed.",
+        "result": result_text,
         "stop_reason": "end_turn",
         "total_cost_usd": 0.001,
         "usage": {"input_tokens": 10, "output_tokens": 8},
@@ -120,7 +120,8 @@ def handle_line(line: str) -> None:
                         "tool_use_id": "toolu_mock_permission_001",
                         "message": decision.get("message", "denied"),
                     }
-                ]
+                ],
+                result_text="Permission probe completed.",
             )
 
 
