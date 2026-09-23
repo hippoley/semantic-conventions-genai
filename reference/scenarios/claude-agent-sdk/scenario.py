@@ -3,7 +3,7 @@
 import json
 import os
 
-from reference_shared import flush_and_shutdown, reference_tracer, setup_otel
+from reference_shared import flush_and_shutdown, reference_event_logger, reference_tracer, setup_otel
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MOCK_CLI_PATH = os.path.join(
@@ -117,6 +117,17 @@ async def run_tool_permission_denial_gap():
         seen["input"] = dict(input_data)
         seen["tool_use_id"] = context.tool_use_id
         seen["decision_reason"] = context.decision_reason
+        attributes = {
+            "gen_ai.tool.call.decision.outcome": "deny",
+            "gen_ai.tool.name": tool_name,
+        }
+        if context.tool_use_id:
+            attributes["gen_ai.tool.call.id"] = context.tool_use_id
+        reference_event_logger("gen_ai.reference.claude_agent_sdk").emit(
+            event_name="gen_ai.tool.call.decision",
+            body="Tool call denied",
+            attributes=attributes,
+        )
         return PermissionResultDeny(
             message="Denied by the permission-probe policy.",
             interrupt=False,
