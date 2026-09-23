@@ -160,7 +160,6 @@ async def run_tool_permission_denial_gap():
     )
 
 
-
 def main():
     import anyio
 
