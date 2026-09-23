@@ -162,11 +162,7 @@ async def run_tool_rejection_gap():
         body="Tool call requires approval",
         attributes=require_approval_attributes,
     )
-    print(
-        "    -> approval requested:"
-        f" tool={interruption.name}"
-        f" arguments={interruption.arguments}"
-    )
+    print(f"    -> approval requested: tool={interruption.name} arguments={interruption.arguments}")
 
     state = result.to_state()
     state.reject(interruption, rejection_message="Rejected by the operator.")
