@@ -16,7 +16,7 @@ _PERMISSION_PROBE_REQUEST_ID = "permission-probe-1"
 _permission_probe_pending = False
 
 
-def _write_result(*, permission_denials=None, result_text="Hello! I\'m a mock Claude response.") -> None:
+def _write_result(*, permission_denials=None, result_text="Hello! I'm a mock Claude response.") -> None:
     result = {
         "type": "result",
         "subtype": "success",
