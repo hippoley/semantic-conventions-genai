@@ -136,15 +136,7 @@ async def run_chat_completion_agent_tool_call():
 
 
 async def run_agent_tool_rejection_gap():
-    """Probe the telemetry gap when a real tool call is rejected before execution.
-
-    Microsoft Agent Framework exposes the proposed call through
-    user_input_requests when a tool uses approval_mode="always_require".
-    A rejected request never invokes the tool handler. This probe intentionally
-    emits no invented OpenTelemetry signal: it demonstrates that the library
-    has a real pre-execution decision which current GenAI conventions cannot
-    represent directly.
-    """
+    """Reference a rejected Agent Framework tool approval before execution."""
     from agent_framework import Agent, Message, tool
     from agent_framework.observability import enable_sensitive_telemetry
     from agent_framework.openai import OpenAIChatClient
@@ -177,7 +169,7 @@ async def run_agent_tool_rejection_gap():
         tools=[get_weather],
     )
 
-    query = "What\'s the weather in Seattle?"
+    query = "What's the weather in Seattle?"
     result = await agent.run(
         query,
         options={
@@ -230,10 +222,7 @@ async def run_agent_tool_rejection_gap():
     if executed:
         raise AssertionError("Rejected tool approval still executed the handler.")
 
-    print(
-        "    -> rejected before handler execution;"
-        " current GenAI telemetry has no admission-decision signal for this fact"
-    )
+    print("    -> rejection confirmed; tool handler was not executed")
 
 
 async def run_agent_workflow():
