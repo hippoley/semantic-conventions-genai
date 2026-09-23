@@ -145,7 +145,7 @@ async def run_tool_rejection_gap():
     )
 
     print("  [approval_rejection_gap] OpenAI Agents tool rejected before execution")
-    result = await Runner.run(agent, "What\'s the weather in Seattle?")
+    result = await Runner.run(agent, "What's the weather in Seattle?")
     if not result.interruptions:
         raise RuntimeError("Expected a pending OpenAI Agents tool approval interruption.")
 
@@ -181,10 +181,7 @@ async def run_tool_rejection_gap():
     if executed:
         raise AssertionError("Rejected OpenAI Agents tool still executed the handler.")
 
-    print(
-        "    -> rejected before handler execution;"
-        " current GenAI telemetry has no admission-decision signal for this fact"
-    )
+    print("    -> rejection recorded; guarded tool handler was not executed")
 
 
 async def run_workflow():
