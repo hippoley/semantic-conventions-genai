@@ -105,19 +105,13 @@ def handle_line(line: str) -> None:
         sys.stdout.flush()
         _write_result()
 
-
     elif msg.get("type") == "control_response":
         response = msg.get("response") or {}
-        if (
-            _permission_probe_pending
-            and response.get("request_id") == _PERMISSION_PROBE_REQUEST_ID
-        ):
+        if _permission_probe_pending and response.get("request_id") == _PERMISSION_PROBE_REQUEST_ID:
             decision = response.get("response") or {}
             behavior = decision.get("behavior")
             if behavior != "deny":
-                raise RuntimeError(
-                    "permission probe expected the SDK callback to deny the tool"
-                )
+                raise RuntimeError("permission probe expected the SDK callback to deny the tool")
             _permission_probe_pending = False
             _write_result(
                 permission_denials=[
@@ -128,7 +122,6 @@ def handle_line(line: str) -> None:
                     }
                 ]
             )
-
 
 
 def main() -> None:
