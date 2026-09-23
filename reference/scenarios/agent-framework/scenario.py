@@ -4,7 +4,7 @@ import asyncio
 import os
 from typing import Annotated
 
-from reference_shared import flush_and_shutdown, setup_otel
+from reference_shared import flush_and_shutdown, reference_event_logger, setup_otel
 
 MOCK_BASE_URL = os.environ["MOCK_LLM_URL"] + "/v1"
 
@@ -198,6 +198,19 @@ async def run_agent_tool_rejection_gap():
 
     approval_request = requests[0]
     proposed_call = approval_request.function_call
+    call_id = getattr(proposed_call, "call_id", None) or getattr(proposed_call, "id", None)
+    logger = reference_event_logger("gen_ai.reference.agent_framework")
+    require_approval_attributes = {
+        "gen_ai.tool.call.decision.outcome": "require_approval",
+        "gen_ai.tool.name": proposed_call.name,
+    }
+    if call_id:
+        require_approval_attributes["gen_ai.tool.call.id"] = str(call_id)
+    logger.emit(
+        event_name="gen_ai.tool.call.decision",
+        body="Tool call requires approval",
+        attributes=require_approval_attributes,
+    )
     print(
         "    -> approval requested:"
         f" tool={proposed_call.name}"
@@ -205,6 +218,17 @@ async def run_agent_tool_rejection_gap():
     )
 
     rejection = approval_request.to_function_approval_response(approved=False)
+    deny_attributes = {
+        "gen_ai.tool.call.decision.outcome": "deny",
+        "gen_ai.tool.name": proposed_call.name,
+    }
+    if call_id:
+        deny_attributes["gen_ai.tool.call.id"] = str(call_id)
+    logger.emit(
+        event_name="gen_ai.tool.call.decision",
+        body="Tool call denied",
+        attributes=deny_attributes,
+    )
     await agent.run(
         [
             query,
