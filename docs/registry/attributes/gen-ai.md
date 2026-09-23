@@ -389,16 +389,6 @@ what `gen_ai.workflow.name` means in the context of that framework.
 
 ---
 
-`gen_ai.tool.call.decision.outcome` has the following list of well-known values. If one of them applies, then the respective value MUST be used; otherwise, a custom value MAY be used.
-
-| Value | Description | Stability |
-| --- | --- | --- |
-| `allow` | The tool call is allowed to proceed to execution. | ![Development](https://img.shields.io/badge/-development-blue) |
-| `deny` | The tool call is not allowed to execute. | ![Development](https://img.shields.io/badge/-development-blue) |
-| `require_approval` | The tool call is suspended pending an external approval decision. | ![Development](https://img.shields.io/badge/-development-blue) |
-
----
-
 `gen_ai.operation.name` has the following list of well-known values. If one of them applies, then the respective value MUST be used; otherwise, a custom value MAY be used.
 
 | Value | Description | Stability |
@@ -487,3 +477,13 @@ what `gen_ai.workflow.name` means in the context of that framework.
 | `image` | Image tokens. | ![Development](https://img.shields.io/badge/-development-blue) |
 | `text` | Text tokens. | ![Development](https://img.shields.io/badge/-development-blue) |
 | `unknown` | The modality is not known. | ![Development](https://img.shields.io/badge/-development-blue) |
+
+---
+
+`gen_ai.tool.call.decision.outcome` has the following list of well-known values. If one of them applies, then the respective value MUST be used; otherwise, a custom value MAY be used.
+
+| Value | Description | Stability |
+| --- | --- | --- |
+| `allow` | The tool call is allowed to proceed to execution. | ![Development](https://img.shields.io/badge/-development-blue) |
+| `deny` | The tool call is not allowed to execute. | ![Development](https://img.shields.io/badge/-development-blue) |
+| `require_approval` | The tool call is suspended pending an external approval decision. | ![Development](https://img.shields.io/badge/-development-blue) |
