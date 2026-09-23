@@ -123,6 +123,51 @@ async def run_agent():
         print(f"    -> {str(result.final_output)[:60]}")
 
 
+async def run_tool_rejection_gap():
+    """Probe a rejected tool approval that never becomes execute_tool telemetry."""
+    client = openai.AsyncOpenAI(base_url=MOCK_BASE_URL, api_key="mock-key")
+    request_model = "gpt-4o-mini"
+    model = OpenAIChatCompletionsModel(model=request_model, openai_client=client)
+    executed = False
+
+    @function_tool(name_override="get_weather", needs_approval=True)
+    def guarded_weather(location: str) -> str:
+        """Get the current weather for a location."""
+        nonlocal executed
+        executed = True
+        return f"Sunny, 72°F in {location}"
+
+    agent = Agent(
+        name="approval-gap-agent",
+        instructions="Use the weather tool to answer weather questions.",
+        model=model,
+        tools=[guarded_weather],
+    )
+
+    print("  [approval_rejection_gap] OpenAI Agents tool rejected before execution")
+    result = await Runner.run(agent, "What\'s the weather in Seattle?")
+    if not result.interruptions:
+        raise RuntimeError("Expected a pending OpenAI Agents tool approval interruption.")
+
+    interruption = result.interruptions[0]
+    print(
+        "    -> approval requested:"
+        f" tool={interruption.name}"
+        f" arguments={interruption.arguments}"
+    )
+
+    state = result.to_state()
+    state.reject(interruption, rejection_message="Rejected by the operator.")
+
+    if executed:
+        raise AssertionError("Rejected OpenAI Agents tool still executed the handler.")
+
+    print(
+        "    -> rejected before handler execution;"
+        " current GenAI telemetry has no admission-decision signal for this fact"
+    )
+
+
 async def run_workflow():
     """Run a multi-agent handoff wrapped in a workflow span representing the SDK workflow tracing."""
     from agents import handoff
@@ -180,6 +225,7 @@ def main():
     tp, lp, mp = setup_otel()
 
     asyncio.run(run_agent())
+    asyncio.run(run_tool_rejection_gap())
     asyncio.run(run_workflow())
 
     flush_and_shutdown(tp, lp, mp)
