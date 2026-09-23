@@ -186,15 +186,9 @@ async def run_agent_tool_rejection_gap():
             "max_tokens": 64,
         },
     )
-    requests = [
-        request
-        for request in result.user_input_requests
-        if request.function_call is not None
-    ]
+    requests = [request for request in result.user_input_requests if request.function_call is not None]
     if not requests:
-        raise RuntimeError(
-            "Agent Framework did not expose the expected tool approval request."
-        )
+        raise RuntimeError("Agent Framework did not expose the expected tool approval request.")
 
     approval_request = requests[0]
     proposed_call = approval_request.function_call
@@ -211,11 +205,7 @@ async def run_agent_tool_rejection_gap():
         body="Tool call requires approval",
         attributes=require_approval_attributes,
     )
-    print(
-        "    -> approval requested:"
-        f" tool={proposed_call.name}"
-        f" arguments={proposed_call.arguments}"
-    )
+    print(f"    -> approval requested: tool={proposed_call.name} arguments={proposed_call.arguments}")
 
     rejection = approval_request.to_function_approval_response(approved=False)
     deny_attributes = {
