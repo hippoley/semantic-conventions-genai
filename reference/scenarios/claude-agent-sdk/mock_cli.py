@@ -12,7 +12,6 @@ Implements the JSON-line protocol expected by claude-agent-sdk:
 import json
 import sys
 
-
 _PERMISSION_PROBE_REQUEST_ID = "permission-probe-1"
 _permission_probe_pending = False
 
