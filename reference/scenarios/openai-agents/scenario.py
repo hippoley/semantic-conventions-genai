@@ -12,7 +12,7 @@ import openai
 from agents import Agent, RunConfig, Runner, function_tool
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from agents.tool import FunctionTool, ToolContext
-from reference_shared import flush_and_shutdown, reference_tracer, setup_otel
+from reference_shared import flush_and_shutdown, reference_event_logger, reference_tracer, setup_otel
 
 MOCK_BASE_URL = os.environ["MOCK_LLM_URL"] + "/v1"
 
@@ -150,6 +150,18 @@ async def run_tool_rejection_gap():
         raise RuntimeError("Expected a pending OpenAI Agents tool approval interruption.")
 
     interruption = result.interruptions[0]
+    logger = reference_event_logger("gen_ai.reference.openai_agents")
+    require_approval_attributes = {
+        "gen_ai.tool.call.decision.outcome": "require_approval",
+        "gen_ai.tool.name": interruption.name,
+    }
+    if interruption.call_id:
+        require_approval_attributes["gen_ai.tool.call.id"] = interruption.call_id
+    logger.emit(
+        event_name="gen_ai.tool.call.decision",
+        body="Tool call requires approval",
+        attributes=require_approval_attributes,
+    )
     print(
         "    -> approval requested:"
         f" tool={interruption.name}"
@@ -158,6 +170,17 @@ async def run_tool_rejection_gap():
 
     state = result.to_state()
     state.reject(interruption, rejection_message="Rejected by the operator.")
+    deny_attributes = {
+        "gen_ai.tool.call.decision.outcome": "deny",
+        "gen_ai.tool.name": interruption.name,
+    }
+    if interruption.call_id:
+        deny_attributes["gen_ai.tool.call.id"] = interruption.call_id
+    logger.emit(
+        event_name="gen_ai.tool.call.decision",
+        body="Tool call denied",
+        attributes=deny_attributes,
+    )
 
     if executed:
         raise AssertionError("Rejected OpenAI Agents tool still executed the handler.")
