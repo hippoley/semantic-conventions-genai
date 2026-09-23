@@ -154,10 +154,7 @@ async def run_tool_permission_denial_gap():
     if seen.get("tool_use_id") != "toolu_mock_permission_001":
         raise AssertionError(f"Missing stable permission tool_use_id: {seen!r}")
 
-    print(
-        "    -> SDK received a concrete Bash permission request and returned deny;"
-        " no execute_tool span can represent that rejected proposal"
-    )
+    print("    -> deny returned for Bash tool_use_id=toolu_mock_permission_001")
 
 
 def main():
