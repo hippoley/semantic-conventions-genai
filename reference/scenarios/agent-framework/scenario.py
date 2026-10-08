@@ -241,6 +241,7 @@ async def run_agent_tool_rejection_gap():
 
     print("    -> rejection confirmed; tool handler was not executed")
 
+
 async def run_agent_workflow():
     """Scenario: Agent Framework workflow execution with native telemetry."""
     from agent_framework import Agent, WorkflowBuilder
