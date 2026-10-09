@@ -903,13 +903,9 @@ and SHOULD be provided **at span creation time** (if provided at all):
 <!-- endweaver -->
 
 > [!NOTE]
-> The `execute_tool` span describes tool execution as observed by the
-> instrumentation boundary. A successful span, transport response, or
-> `gen_ai.tool.call.result` does not by itself establish that a consequential
-> effect in an external system is durably committed or otherwise confirmed.
-> When the final external effect is observable only outside the instrumented
-> tool boundary, its confirmation or reconciliation is outside the scope of
-> this span.
+> `gen_ai.tool.call.result` records the result returned by the tool call. It
+> does not by itself confirm a side effect that can only be observed in another
+> system. Instrument that observation separately when it is needed.
 
 ## Capturing instructions, inputs, and outputs
 
