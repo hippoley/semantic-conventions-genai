@@ -53,6 +53,11 @@ def convert(document):
         "scopeSpans": [{"scope": {"name": "foreman.evidence.replay"}, "spans": spans}]}]}
 
 def normalize(payload):
+    if isinstance(payload, list):
+        merged = {"resourceSpans": []}
+        for entry in payload:
+            merged["resourceSpans"].extend(entry.get("resourceSpans", []))
+        payload = merged
     spans = []
     for rs in payload.get("resourceSpans", []):
         for ss in rs.get("scopeSpans", []):
@@ -66,7 +71,11 @@ def main():
     if len(sys.argv) != 4 or sys.argv[1] not in ("encode", "decode"):
         print("usage: otlp_replay.py encode|decode input.json output.json", file=sys.stderr)
         return 2
-    data = json.loads(Path(sys.argv[2]).read_text())
+    raw = Path(sys.argv[2]).read_text()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        data = [json.loads(line) for line in raw.splitlines() if line.strip()]
     result = convert(data) if sys.argv[1] == "encode" else normalize(data)
     Path(sys.argv[3]).write_text(json.dumps(result, indent=2))
     return 0
