@@ -127,6 +127,21 @@ class TraceVerifierTests(unittest.TestCase):
         ]})
         self.assert_invalid(doc, "allow")
 
+    def test_null_spans_rejected_cleanly(self):
+        doc = fixture()
+        doc["spans"] = None
+        self.assert_invalid(doc, "allow")
+
+    def test_malformed_span_rejected_cleanly(self):
+        doc = fixture()
+        doc["spans"].append(None)
+        self.assert_invalid(doc, "allow")
+
+    def test_malformed_decision_attributes_rejected_cleanly(self):
+        doc = fixture()
+        doc["spans"][0]["events"][0]["attributes"] = "invalid"
+        self.assert_invalid(doc, "allow")
+
     def test_non_simulated_input_rejected(self):
         doc = fixture()
         doc["mode"] = "Production"
