@@ -155,6 +155,17 @@ class TraceVerifierTests(unittest.TestCase):
         doc["spans"][0]["events"][0]["attributes"][module.CALL_ID] = 123
         self.assert_invalid(doc, "allow")
 
+    def test_missing_tool_name_rejected(self):
+        doc = fixture()
+        for event in doc["spans"][0]["events"]:
+            event["attributes"].pop("gen_ai.tool.name")
+        self.assert_invalid(doc, "allow")
+
+    def test_non_string_tool_name_rejected(self):
+        doc = fixture()
+        doc["spans"][0]["events"][0]["attributes"]["gen_ai.tool.name"] = 42
+        self.assert_invalid(doc, "allow")
+
     def test_non_simulated_input_rejected(self):
         doc = fixture()
         doc["mode"] = "Production"
