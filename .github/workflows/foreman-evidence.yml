@@ -23,3 +23,15 @@ jobs:
           persist-credentials: false
       - name: Test validation and adversarial cases
         run: python3 -m unittest discover -s scripts -p 'test_check_decision_trace.py' -v
+      - name: Verify published Foreman simulated traces (pinned commit)
+        env:
+          FOREMAN_COMMIT: 6d57dca896a01c2f7aefa905a11369d3de09b6c0
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/foreman-evidence
+          for kind in approve deny; do
+            curl --fail --location --show-error --retry 3 \
+              "https://raw.githubusercontent.com/karank2512/Foreman/${FOREMAN_COMMIT}/docs/otel-evidence/${kind}-path.json" \
+              --output "/tmp/foreman-evidence/${kind}.json"
+          done
+          python3 scripts/check_decision_trace.py /tmp/foreman-evidence/approve.json /tmp/foreman-evidence/deny.json
