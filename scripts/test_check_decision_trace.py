@@ -95,6 +95,33 @@ class TraceVerifierTests(unittest.TestCase):
         doc["spans"][0]["events"][1]["attributes"]["gen_ai.tool.name"] = "other_tool"
         self.assert_invalid(doc, "allow")
 
+    def test_mixed_valid_and_invalid_calls_rejected(self):
+        doc = fixture("allow", 1)
+        doc["spans"].append({"events": [
+            {"name": module.EVENT, "attributes": {
+                module.CALL_ID: "call-2",
+                module.OUTCOME: "require_approval",
+                "gen_ai.tool.name": "other_tool",
+            }},
+            {"name": module.EVENT, "attributes": {
+                module.CALL_ID: "call-2",
+                module.OUTCOME: "deny",
+                "gen_ai.tool.name": "other_tool",
+            }},
+        ]})
+        self.assert_invalid(doc, "allow")
+
+    def test_unpaired_decision_rejected(self):
+        doc = fixture("allow", 1)
+        doc["spans"].append({"events": [
+            {"name": module.EVENT, "attributes": {
+                module.CALL_ID: "call-2",
+                module.OUTCOME: "allow",
+                "gen_ai.tool.name": "other_tool",
+            }},
+        ]})
+        self.assert_invalid(doc, "allow")
+
     def test_non_simulated_input_rejected(self):
         doc = fixture()
         doc["mode"] = "Production"
