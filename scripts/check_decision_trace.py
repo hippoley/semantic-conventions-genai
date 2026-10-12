@@ -55,7 +55,10 @@ def validate(document, expected):
             if not isinstance(key, str) or not key:
                 errors.append("decision event missing valid string tool call ID (cannot correlate)")
                 continue
-            events.setdefault(key, []).append((a.get(OUTCOME), a.get("gen_ai.tool.name")))
+            tool_name = a.get("gen_ai.tool.name")
+            if not isinstance(tool_name, str) or not tool_name:
+                errors.append(f"{key}: missing valid tool name for source-specific evidence")
+            events.setdefault(key, []).append((a.get(OUTCOME), tool_name))
     matched = []
     for key, decisions in events.items():
         outcomes = [outcome for outcome, _ in decisions]
