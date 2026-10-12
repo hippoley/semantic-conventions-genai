@@ -74,5 +74,21 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(self.check(data)["status"], "FAIL")
 
 
+    def test_duplicate_gate_fails(self):
+        data = fixture()
+        data["spans"][0]["events"] *= 2
+        self.assertEqual(self.check(data)["status"], "FAIL")
+
+    def test_custom_expired_after_allow_not_silently_accepted(self):
+        data = fixture()
+        import copy
+        event = copy.deepcopy(data["spans"][1]["events"][0])
+        event["attributes"]["gen_ai.tool.call.decision.outcome"] = "expired"
+        data["spans"][1]["events"].append(event)
+        self.assertEqual(self.check(data)["status"], "FAIL")
+
+    def test_non_simulated_trace_requires_provenance(self):
+        self.assertEqual(self.check(fixture(mode="Production"))["status"], "INCONCLUSIVE_PROVENANCE")
+
 if __name__ == "__main__":
     unittest.main()
