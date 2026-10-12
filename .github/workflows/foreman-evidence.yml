@@ -35,3 +35,30 @@ jobs:
               --output "/tmp/foreman-evidence/${kind}.json"
           done
           python3 scripts/check_decision_trace.py /tmp/foreman-evidence/approve.json /tmp/foreman-evidence/deny.json
+
+      - name: Replay pinned Foreman fixtures through a real OTLP Collector
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/collector-evidence
+          chmod 777 /tmp/collector-evidence
+          docker run -d --name decision-otelcol -p 127.0.0.1:4318:4318 \
+            -v "$PWD/scripts/otelcol-evidence.yaml:/etc/otelcol-contrib/config.yaml:ro" \
+            -v /tmp/collector-evidence:/evidence \
+            otel/opentelemetry-collector-contrib:0.136.0 \
+            --config=/etc/otelcol-contrib/config.yaml
+          trap 'docker logs decision-otelcol; docker rm -f decision-otelcol >/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -s -o /dev/null http://127.0.0.1:4318/v1/traces; then break; fi
+            sleep 1
+          done
+          for kind in approve deny; do
+            python3 scripts/otlp_replay.py encode "/tmp/foreman-evidence/${kind}.json" "/tmp/foreman-evidence/${kind}-otlp.json"
+            curl --fail --show-error --retry 3 \
+              -H "Content-Type: application/json" \
+              --data-binary "@/tmp/foreman-evidence/${kind}-otlp.json" \
+              http://127.0.0.1:4318/v1/traces
+          done
+          docker stop decision-otelcol >/dev/null
+          test -s /tmp/collector-evidence/collected.json
+          python3 scripts/otlp_replay.py decode /tmp/collector-evidence/collected.json /tmp/foreman-evidence/collector-normalized.json
+          python3 -c 'import json; p=json.load(open("/tmp/foreman-evidence/collector-normalized.json")); assert len(p["spans"]) > 0; print("Collector exported",len(p["spans"]),"spans")'
