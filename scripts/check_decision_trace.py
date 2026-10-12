@@ -17,19 +17,34 @@ def validate(document, expected):
     errors = []
     if document.get("mode") != "Simulated":
         errors.append("fixture must explicitly declare mode=Simulated")
+    spans = document.get("spans")
+    if not isinstance(spans, list):
+        return ["spans must be an array"], []
     events, executions = {}, Counter()
     execution_names = {}
-    for span in document.get("spans", []):
-        attributes = span.get("attributes", {})
+    for span in spans:
+        if not isinstance(span, dict):
+            errors.append("span must be an object")
+            continue
+        attributes = span.get("attributes") or {}
+        if not isinstance(attributes, dict):
+            errors.append("span attributes must be an object")
+            continue
         if attributes.get("gen_ai.operation.name") == "execute_tool":
             key = attributes.get(CALL_ID)
             if key:
                 executions[key] += 1
                 execution_names.setdefault(key, set()).add(attributes.get("gen_ai.tool.name"))
-        for event in span.get("events", []):
+        for event in span.get("events") or []:
+            if not isinstance(event, dict):
+                errors.append("event must be an object")
+                continue
             if event.get("name") != EVENT:
                 continue
-            a = event.get("attributes", {})
+            a = event.get("attributes") or {}
+            if not isinstance(a, dict):
+                errors.append("decision attributes must be an object")
+                continue
             key = a.get(CALL_ID)
             if not key:
                 errors.append("decision event missing tool call ID (cannot correlate)")
