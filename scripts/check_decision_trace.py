@@ -92,9 +92,15 @@ def main():
         return 2
     failed = False
     for filename, expectation in zip(sys.argv[1:], ("allow", "deny")):
-        doc = json.loads(Path(filename).read_text(encoding="utf-8"))
+        try:
+            doc = json.loads(Path(filename).read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            print(f"{filename}: FAIL input_error={type(exc).__name__}: {exc}", file=sys.stderr)
+            failed = True
+            continue
         errors, ids = validate(doc, expectation)
-        print(f"{filename}: {'FAIL' if errors else 'PASS'} matched_calls={len(ids)} simulated={doc.get('mode') == 'Simulated'}")
+        simulated = isinstance(doc, dict) and doc.get("mode") == "Simulated"
+        print(f"{filename}: {'FAIL' if errors else 'PASS'} matched_calls={len(ids)} simulated={simulated}")
         for error in errors:
             print(f"  ERROR: {error}")
         failed |= bool(errors)
