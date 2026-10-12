@@ -142,6 +142,19 @@ class TraceVerifierTests(unittest.TestCase):
         doc["spans"][0]["events"][0]["attributes"] = "invalid"
         self.assert_invalid(doc, "allow")
 
+    def test_document_must_be_object(self):
+        self.assert_invalid(None, "allow")
+
+    def test_events_must_be_array(self):
+        doc = fixture()
+        doc["spans"][0]["events"] = "bad"
+        self.assert_invalid(doc, "allow")
+
+    def test_decision_id_must_be_string(self):
+        doc = fixture()
+        doc["spans"][0]["events"][0]["attributes"][module.CALL_ID] = 123
+        self.assert_invalid(doc, "allow")
+
     def test_non_simulated_input_rejected(self):
         doc = fixture()
         doc["mode"] = "Production"
