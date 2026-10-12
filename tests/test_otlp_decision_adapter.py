@@ -14,7 +14,7 @@ def data():
             "name": "tool_call_decision", "traceId": "0123456789abcdef0123456789abcdef",
             "spanId": "0123456789abcdef",
             "attributes": [{"key": "gen_ai.agent.execution.id", "value": {"stringValue": "run-1"}}],
-            "events": [{"name": "gen_ai.tool.call.decision", "attributes": [
+            "events": [{"name": "gen_ai.tool.call.decision", "timeUnixNano": "200", "attributes": [
                 {"key": "gen_ai.tool.call.id", "value": {"stringValue": "call-1"}},
                 {"key": "gen_ai.tool.call.decision.outcome", "value": {"stringValue": "allow"}}]}]}]}]}]}
 
@@ -53,6 +53,7 @@ class OTLPTests(unittest.TestCase):
         spans = doc["resourceSpans"][0]["scopeSpans"][0]["spans"]
         gate = json.loads(json.dumps(spans[0]))
         gate["events"][0]["attributes"][-1]["value"]["stringValue"] = "require_approval"
+        gate["events"][0]["timeUnixNano"] = "100"
         spans.insert(0, gate)
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "deny.json"
@@ -74,6 +75,43 @@ class OTLPTests(unittest.TestCase):
                         {"key": "gen_ai.agent.execution.id", "value": {"stringValue": "run-1"}}]})
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / "deny-with-execute.json"
+            p.write_text(json.dumps(doc))
+            self.assertEqual(assess(p)["status"], "FAIL")
+
+
+    def test_otlp_out_of_order_export_uses_event_time(self):
+        doc = data()
+        spans = doc["resourceSpans"][0]["scopeSpans"][0]["spans"]
+        gate = json.loads(json.dumps(spans[0]))
+        gate["events"][0]["attributes"][-1]["value"]["stringValue"] = "require_approval"
+        gate["events"][0]["timeUnixNano"] = "100"
+        spans.append(gate)  # exporter emits terminal first, gate second
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "unordered.json"
+            p.write_text(json.dumps(doc))
+            self.assertEqual(assess(p)["status"], "INCONCLUSIVE_PROVENANCE")
+
+    def test_otlp_terminal_before_gate_fails(self):
+        doc = data()
+        spans = doc["resourceSpans"][0]["scopeSpans"][0]["spans"]
+        gate = json.loads(json.dumps(spans[0]))
+        gate["events"][0]["attributes"][-1]["value"]["stringValue"] = "require_approval"
+        gate["events"][0]["timeUnixNano"] = "300"
+        spans.append(gate)
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "bad-time.json"
+            p.write_text(json.dumps(doc))
+            self.assertEqual(assess(p)["status"], "FAIL")
+
+    def test_otlp_missing_timestamp_fails(self):
+        doc = data()
+        spans = doc["resourceSpans"][0]["scopeSpans"][0]["spans"]
+        gate = json.loads(json.dumps(spans[0]))
+        gate["events"][0]["attributes"][-1]["value"]["stringValue"] = "require_approval"
+        gate["events"][0].pop("timeUnixNano")
+        spans.insert(0, gate)
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "missing-time.json"
             p.write_text(json.dumps(doc))
             self.assertEqual(assess(p)["status"], "FAIL")
 
