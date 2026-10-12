@@ -13,6 +13,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from tools.otlp_decision_adapter import read_otlp_json
 
 EVENT = "gen_ai.tool.call.decision"
 ID = "gen_ai.tool.call.id"
@@ -22,7 +23,12 @@ EXECUTION = "gen_ai.agent.execution.id"
 
 def assess(path, require_cross_process=False):
     try:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        try:
+            raw = Path(path).read_text(encoding="utf-8")
+            parsed = json.loads(raw)
+            data = read_otlp_json(path) if "resourceSpans" in parsed else parsed
+        except json.JSONDecodeError:
+            data = read_otlp_json(path)
         spans = data["spans"]
         if not isinstance(spans, list):
             raise ValueError("spans must be an array")
