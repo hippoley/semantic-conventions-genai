@@ -35,16 +35,18 @@ def validate(document, expected):
             events.setdefault(key, []).append((a.get(OUTCOME), a.get("gen_ai.tool.name")))
     matched = []
     for key, decisions in events.items():
-        outcomes = [o for o, _ in decisions]
+        outcomes = [outcome for outcome, _ in decisions]
         if "require_approval" not in outcomes:
+            errors.append(f"{key}: decision without require_approval")
             continue
-        if expected not in outcomes:
-            errors.append(f"{key}: missing expected terminal outcome {expected}")
+        if outcomes.count("require_approval") != 1:
+            errors.append(f"{key}: duplicate approval requirement")
+        terminal = [outcome for outcome in outcomes if outcome != "require_approval"]
+        if terminal != [expected]:
+            errors.append(f"{key}: expected one {expected} terminal decision, got {terminal}")
             continue
         matched.append(key)
-        if outcomes.count("require_approval") != 1 or outcomes.count(expected) != 1:
-            errors.append(f"{key}: duplicate approval or terminal decision")
-        if len({n for _, n in decisions}) != 1:
+        if len({name for _, name in decisions}) != 1:
             errors.append(f"{key}: tool names differ between decision events")
         if outcomes.index("require_approval") > outcomes.index(expected):
             errors.append(f"{key}: terminal decision preceded approval requirement")
@@ -52,8 +54,6 @@ def validate(document, expected):
         want = 1 if expected == "allow" else 0
         if count != want:
             errors.append(f"{key}: expected {want} matching execute_tool spans, got {count}")
-        if ("allow" in outcomes) and ("deny" in outcomes):
-            errors.append(f"{key}: contradictory allow/deny decisions")
     if not matched:
         errors.append(f"no matching require_approval → {expected} decision sequence")
     return errors, matched
