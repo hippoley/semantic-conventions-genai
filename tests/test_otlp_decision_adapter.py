@@ -82,6 +82,8 @@ class OTLPTests(unittest.TestCase):
     def test_otlp_out_of_order_export_uses_event_time(self):
         doc = data()
         spans = doc["resourceSpans"][0]["scopeSpans"][0]["spans"]
+        # A deny terminal requires no execute_tool span; allow would need one.
+        spans[0]["events"][0]["attributes"][-1]["value"]["stringValue"] = "deny"
         gate = json.loads(json.dumps(spans[0]))
         gate["events"][0]["attributes"][-1]["value"]["stringValue"] = "require_approval"
         gate["events"][0]["timeUnixNano"] = "100"
