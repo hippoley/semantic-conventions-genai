@@ -39,8 +39,11 @@ def validate(document, expected):
         if "require_approval" not in outcomes:
             continue
         if expected not in outcomes:
+            errors.append(f"{key}: missing expected terminal outcome {expected}")
             continue
         matched.append(key)
+        if outcomes.count("require_approval") != 1 or outcomes.count(expected) != 1:
+            errors.append(f"{key}: duplicate approval or terminal decision")
         if len({n for _, n in decisions}) != 1:
             errors.append(f"{key}: tool names differ between decision events")
         if outcomes.index("require_approval") > outcomes.index(expected):
