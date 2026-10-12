@@ -40,16 +40,19 @@ def assess(path, require_cross_process=False):
                 tool_spans.append(span)
             for event in span.get("events") or []:
                 if event.get("name") == EVENT:
-                    decisions.append((event.get("attributes") or {}, span))
+                    decisions.append((event.get("attributes") or {}, span, event.get("timeUnixNano")))
         grouped = {}
-        for attrs, span in decisions:
+        for attrs, span, timestamp in decisions:
             call_id = attrs.get(ID)
             if not isinstance(call_id, str) or not call_id:
                 raise ValueError("decision event lacks nonempty tool-call id")
-            grouped.setdefault(call_id, []).append((attrs, span))
+            run_id = attrs.get(EXECUTION)
+            if not isinstance(run_id, str) or not run_id:
+                raise ValueError(f"{call_id}: decision lacks execution id")
+            grouped.setdefault((run_id, call_id), []).append((attrs, span, timestamp))
         checked = []
-        for call_id, entries in grouped.items():
-            outcomes = [attrs.get(OUTCOME) for attrs, _ in entries]
+        for (run_id, call_id), entries in grouped.items():
+            outcomes = [attrs.get(OUTCOME) for attrs, _, _ in entries]
             if "require_approval" not in outcomes:
                 continue
             if outcomes.count("require_approval") != 1:
@@ -59,13 +62,23 @@ def assess(path, require_cross_process=False):
             terminals = [x for x in outcomes if x in ("allow", "deny")]
             if len(terminals) != 1:
                 raise ValueError(f"{call_id}: expected exactly one allow/deny decision")
-            if outcomes.index("require_approval") > outcomes.index(terminals[0]):
+            if data.get("format") == "OTLP_JSON":
+                timestamps = []
+                for _, _, raw_time in entries:
+                    if not isinstance(raw_time, (str, int)) or not str(raw_time).isdigit() or int(raw_time) <= 0:
+                        raise ValueError(f"{call_id}: OTLP decision lacks valid event timeUnixNano")
+                    timestamps.append(int(raw_time))
+                gate_time = timestamps[outcomes.index("require_approval")]
+                terminal_time = timestamps[outcomes.index(terminals[0])]
+                if terminal_time <= gate_time:
+                    raise ValueError(f"{call_id}: terminal decision must follow gate in event time")
+            elif outcomes.index("require_approval") > outcomes.index(terminals[0]):
                 raise ValueError(f"{call_id}: outcome ordering is invalid")
-            execs = [s for s in tool_spans if (s.get("attributes") or {}).get(ID) == call_id]
+            execs = [s for s in tool_spans if (s.get("attributes") or {}).get(ID) == call_id and (s.get("attributes") or {}).get(EXECUTION) == run_id]
             expected = 1 if terminals[0] == "allow" else 0
             if len(execs) != expected:
                 raise ValueError(f"{call_id}: {terminals[0]} has {len(execs)} executions, expected {expected}")
-            execution_ids = {a.get(EXECUTION) for a, _ in entries}
+            execution_ids = {a.get(EXECUTION) for a, _, _ in entries}
             execution_ids.update((s.get("attributes") or {}).get(EXECUTION) for s in execs)
             if len(execution_ids) != 1 or None in execution_ids:
                 raise ValueError(f"{call_id}: missing/inconsistent agent execution id")
