@@ -6,7 +6,9 @@ on:
   pull_request:
     paths:
       - 'tools/verify_tool_decision_evidence.py'
+      - 'tools/otlp_decision_adapter.py'
       - 'tests/test_tool_decision_evidence.py'
+      - 'tests/test_otlp_decision_adapter.py'
       - '.github/workflows/tool-decision-evidence.yml'
 permissions:
   contents: read
@@ -19,4 +21,4 @@ jobs:
         with:
           python-version: '3.12'
       - name: Regression tests
-        run: python -m unittest discover -s tests -p test_tool_decision_evidence.py -v
+        run: python -m unittest discover -s tests -p 'test_*decision*.py' -v
