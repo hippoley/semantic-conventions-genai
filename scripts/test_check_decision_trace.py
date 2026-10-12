@@ -1,5 +1,9 @@
 """Regression and adversarial checks for decision trace evidence."""
 import importlib.util
+import json
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 import unittest
 
@@ -165,6 +169,35 @@ class TraceVerifierTests(unittest.TestCase):
         doc = fixture()
         doc["spans"][0]["events"][0]["attributes"]["gen_ai.tool.name"] = 42
         self.assert_invalid(doc, "allow")
+
+    def test_cli_bad_json_returns_failure_without_traceback(self):
+        with tempfile.TemporaryDirectory() as folder:
+            bad = Path(folder) / "bad.json"
+            good = Path(folder) / "good.json"
+            bad.write_text("{not-json", encoding="utf-8")
+            good.write_text(json.dumps(fixture("deny", 0)), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(path), str(bad), str(good)],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("JSONDecodeError", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertIn("PASS", result.stdout)
+
+    def test_cli_nonobject_json_fails_without_exception(self):
+        with tempfile.TemporaryDirectory() as folder:
+            bad = Path(folder) / "nonobject.json"
+            good = Path(folder) / "good.json"
+            bad.write_text("null", encoding="utf-8")
+            good.write_text(json.dumps(fixture("deny", 0)), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(path), str(bad), str(good)],
+                capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("FAIL", result.stdout)
+            self.assertNotIn("Traceback", result.stderr)
 
     def test_non_simulated_input_rejected(self):
         doc = fixture()
