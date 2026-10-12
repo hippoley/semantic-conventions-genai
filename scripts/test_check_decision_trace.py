@@ -111,6 +111,11 @@ class TraceVerifierTests(unittest.TestCase):
         ]})
         self.assert_invalid(doc, "allow")
 
+    def test_execution_tool_name_mismatch_rejected(self):
+        doc = fixture("allow", 1)
+        doc["spans"][1]["attributes"]["gen_ai.tool.name"] = "other_tool"
+        self.assert_invalid(doc, "allow")
+
     def test_unpaired_decision_rejected(self):
         doc = fixture("allow", 1)
         doc["spans"].append({"events": [
