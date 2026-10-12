@@ -1,0 +1,25 @@
+name: Foreman decision evidence tests
+
+on:
+  push:
+    branches:
+      - evidence/foreman-decision-conformance
+  pull_request:
+    paths:
+      - 'scripts/check_decision_trace.py'
+      - 'scripts/test_check_decision_trace.py'
+      - '.github/workflows/foreman-evidence.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test validation and adversarial cases
+        run: python3 -m unittest discover -s scripts -p 'test_check_decision_trace.py' -v
