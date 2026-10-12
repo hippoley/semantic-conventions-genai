@@ -18,12 +18,14 @@ def validate(document, expected):
     if document.get("mode") != "Simulated":
         errors.append("fixture must explicitly declare mode=Simulated")
     events, executions = {}, Counter()
+    execution_names = {}
     for span in document.get("spans", []):
         attributes = span.get("attributes", {})
         if attributes.get("gen_ai.operation.name") == "execute_tool":
             key = attributes.get(CALL_ID)
             if key:
                 executions[key] += 1
+                execution_names.setdefault(key, set()).add(attributes.get("gen_ai.tool.name"))
         for event in span.get("events", []):
             if event.get("name") != EVENT:
                 continue
@@ -50,6 +52,8 @@ def validate(document, expected):
             errors.append(f"{key}: tool names differ between decision events")
         if outcomes.index("require_approval") > outcomes.index(expected):
             errors.append(f"{key}: terminal decision preceded approval requirement")
+        if executions[key] and execution_names.get(key) != {decisions[0][1]}:
+            errors.append(f"{key}: execution tool name differs from decision")
         count = executions[key]
         want = 1 if expected == "allow" else 0
         if count != want:
