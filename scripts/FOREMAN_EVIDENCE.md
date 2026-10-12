@@ -29,3 +29,20 @@ YAML as "The tool call identifier"; requiring its origin to be model-issued
 would need a separate explicit semantic decision.
 
 The upstream proposal is **not yet adopted or stable**.
+
+## Evidence boundary and adoption gate
+
+This is a **Foreman fixture-specific** verifier: it deliberately requires a
+non-empty `gen_ai.tool.name` and correlation ID in the captured decision records.
+Those are stronger fixture assertions than the proposed semantic convention's
+`Recommended If available` attributes and **must not** be interpreted as
+universal semantic-convention conformance requirements.
+
+A passing trace shows record consistency, not that the exporter is deployed,
+that an OpenTelemetry Collector received the data, that a provider created
+model-owned IDs, or that physical side effects are idempotent. Use separate,
+independently captured Collector evidence before making those claims.
+
+Source is pinned to Foreman commit
+[`6d57dca896a01c2f7aefa905a11369d3de09b6c0`](https://github.com/karank2512/Foreman/commit/6d57dca896a01c2f7aefa905a11369d3de09b6c0)
+in CI so passing results remain attributable to specific upstream bytes.
