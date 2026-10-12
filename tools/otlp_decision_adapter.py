@@ -39,8 +39,13 @@ def normalize(data):
                 attrs = attributes(span.get("attributes", []))
                 events = []
                 for event in span.get("events", []):
+                    event_attrs = attributes(event.get("attributes", []))
+                    # Event-local keys override enclosing span context; inherited
+                    # execution identity is needed when events omit it.
+                    inherited = dict(attrs)
+                    inherited.update(event_attrs)
                     events.append({"name": event.get("name"),
-                                   "attributes": attributes(event.get("attributes", [])),
+                                   "attributes": inherited,
                                    "timeUnixNano": event.get("timeUnixNano")})
                 spans.append({"name": span.get("name"), "traceId": span.get("traceId"),
                               "spanId": span.get("spanId"), "attributes": attrs,
