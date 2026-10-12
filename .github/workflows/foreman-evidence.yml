@@ -62,3 +62,7 @@ jobs:
           test -s /tmp/collector-evidence/collected.json
           python3 scripts/otlp_replay.py decode /tmp/collector-evidence/collected.json /tmp/foreman-evidence/collector-normalized.json
           python3 -c 'import json; p=json.load(open("/tmp/foreman-evidence/collector-normalized.json")); assert len(p["spans"]) > 0; print("Collector exported",len(p["spans"]),"spans")'
+          python3 scripts/check_collector_replay.py \
+            /tmp/foreman-evidence/approve.json \
+            /tmp/foreman-evidence/deny.json \
+            /tmp/foreman-evidence/collector-normalized.json
