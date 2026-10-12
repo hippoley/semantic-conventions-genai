@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from tools.otlp_decision_adapter import attributes, normalize, read_otlp_json
+from tools.verify_tool_decision_evidence import assess
 
 
 def data():
@@ -46,6 +47,35 @@ class OTLPTests(unittest.TestCase):
     def test_unverified_provenance(self):
         self.assertEqual(normalize(data())["provenance"], "unverified")
 
+
+    def test_end_to_end_otlp_deny_is_provenance_inconclusive(self):
+        doc = data()
+        spans = doc["resourceSpans"][0]["scopeSpans"][0]["spans"]
+        gate = json.loads(json.dumps(spans[0]))
+        gate["events"][0]["attributes"][-1]["value"]["stringValue"] = "require_approval"
+        spans.insert(0, gate)
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "deny.json"
+            spans[1]["events"][0]["attributes"][-1]["value"]["stringValue"] = "deny"
+            p.write_text(json.dumps(doc))
+            self.assertEqual(assess(p)["status"], "INCONCLUSIVE_PROVENANCE")
+
+    def test_end_to_end_otlp_deny_execution_fails(self):
+        doc = data()
+        spans = doc["resourceSpans"][0]["scopeSpans"][0]["spans"]
+        gate = json.loads(json.dumps(spans[0]))
+        gate["events"][0]["attributes"][-1]["value"]["stringValue"] = "require_approval"
+        spans.insert(0, gate)
+        spans[1]["events"][0]["attributes"][-1]["value"]["stringValue"] = "deny"
+        spans.append({"name": "execute_tool send_notification",
+                      "attributes": [
+                        {"key": "gen_ai.operation.name", "value": {"stringValue": "execute_tool"}},
+                        {"key": "gen_ai.tool.call.id", "value": {"stringValue": "call-1"}},
+                        {"key": "gen_ai.agent.execution.id", "value": {"stringValue": "run-1"}}]})
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "deny-with-execute.json"
+            p.write_text(json.dumps(doc))
+            self.assertEqual(assess(p)["status"], "FAIL")
 
 if __name__ == "__main__":
     unittest.main()
