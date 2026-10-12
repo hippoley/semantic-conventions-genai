@@ -14,6 +14,8 @@ OUTCOME = EVENT + ".outcome"
 CALL_ID = "gen_ai.tool.call.id"
 
 def validate(document, expected):
+    if not isinstance(document, dict):
+        return ["trace document must be an object"], []
     errors = []
     if document.get("mode") != "Simulated":
         errors.append("fixture must explicitly declare mode=Simulated")
@@ -32,10 +34,14 @@ def validate(document, expected):
             continue
         if attributes.get("gen_ai.operation.name") == "execute_tool":
             key = attributes.get(CALL_ID)
-            if key:
+            if isinstance(key, str) and key:
                 executions[key] += 1
                 execution_names.setdefault(key, set()).add(attributes.get("gen_ai.tool.name"))
-        for event in span.get("events") or []:
+        span_events = span.get("events") or []
+        if not isinstance(span_events, list):
+            errors.append("span events must be an array")
+            continue
+        for event in span_events:
             if not isinstance(event, dict):
                 errors.append("event must be an object")
                 continue
@@ -46,8 +52,8 @@ def validate(document, expected):
                 errors.append("decision attributes must be an object")
                 continue
             key = a.get(CALL_ID)
-            if not key:
-                errors.append("decision event missing tool call ID (cannot correlate)")
+            if not isinstance(key, str) or not key:
+                errors.append("decision event missing valid string tool call ID (cannot correlate)")
                 continue
             events.setdefault(key, []).append((a.get(OUTCOME), a.get("gen_ai.tool.name")))
     matched = []
