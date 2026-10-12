@@ -46,6 +46,10 @@ def assess(path, require_cross_process=False):
             outcomes = [attrs.get(OUTCOME) for attrs, _ in entries]
             if "require_approval" not in outcomes:
                 continue
+            if outcomes.count("require_approval") != 1:
+                raise ValueError(f"{call_id}: duplicate approval-gate decisions")
+            if any(o not in ("require_approval", "allow", "deny") for o in outcomes):
+                raise ValueError(f"{call_id}: unrecognized/extended outcome requires separate review")
             terminals = [x for x in outcomes if x in ("allow", "deny")]
             if len(terminals) != 1:
                 raise ValueError(f"{call_id}: expected exactly one allow/deny decision")
@@ -65,7 +69,7 @@ def assess(path, require_cross_process=False):
         # Span trace IDs are insufficient proof of distinct instrumented OS processes.
         if require_cross_process:
             raise ValueError("CROSS_PROCESS_UNPROVEN: artifact lacks independently attested web/worker process provenance and collector receipt")
-        return {"artifact": str(path), "status": "PASS_SIMULATED" if data.get("mode") == "Simulated" else "PASS_LIFECYCLE_ONLY", "calls": checked}
+        return {"artifact": str(path), "status": "PASS_SIMULATED" if data.get("mode") == "Simulated" else "INCONCLUSIVE_PROVENANCE", "calls": checked}
     except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
         return {"artifact": str(path), "status": "FAIL", "reason": str(exc)}
 
