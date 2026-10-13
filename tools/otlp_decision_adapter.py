@@ -48,7 +48,7 @@ def normalize(data):
                                    "attributes": inherited,
                                    "timeUnixNano": event.get("timeUnixNano")})
                 spans.append({"name": span.get("name"), "traceId": span.get("traceId"),
-                              "spanId": span.get("spanId"), "attributes": attrs,
+                              "spanId": span.get("spanId"), "startTimeUnixNano": span.get("startTimeUnixNano"), "attributes": attrs,
                               "resourceAttributes": resource_attrs, "events": events})
     return {"spans": spans, "format": "OTLP_JSON", "provenance": "unverified"}
 
