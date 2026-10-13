@@ -78,6 +78,15 @@ def assess(path, require_cross_process=False):
             expected = 1 if terminals[0] == "allow" else 0
             if len(execs) != expected:
                 raise ValueError(f"{call_id}: {terminals[0]} has {len(execs)} executions, expected {expected}")
+            # OTLP span timestamps are not tied to JSON/export order.  An
+            # allowed tool must not begin before its recorded permission.
+            if data.get("format") == "OTLP_JSON" and terminals[0] == "allow":
+                start = execs[0].get("startTimeUnixNano")
+                if not isinstance(start, (str, int)) or isinstance(start, bool) or not str(start).isdigit() or int(start) <= 0:
+                    raise ValueError(f"{call_id}: executed tool lacks valid OTLP startTimeUnixNano")
+                if int(start) < terminal_time:
+                    raise ValueError(f"{call_id}: execution began before approval")
+
             execution_ids = {a.get(EXECUTION) for a, _, _ in entries}
             execution_ids.update((s.get("attributes") or {}).get(EXECUTION) for s in execs)
             if len(execution_ids) != 1 or None in execution_ids:
