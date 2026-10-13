@@ -117,5 +117,35 @@ class OTLPTests(unittest.TestCase):
             p.write_text(json.dumps(doc))
             self.assertEqual(assess(p)["status"], "FAIL")
 
+
+    def test_otlp_execute_after_allow_is_lifecycle_consistent(self):
+        self._check_allow_with_execution(start="300", expected="INCONCLUSIVE_PROVENANCE")
+
+    def test_otlp_execute_before_allow_fails(self):
+        self._check_allow_with_execution(start="150", expected="FAIL")
+
+    def test_otlp_execute_without_start_time_fails(self):
+        self._check_allow_with_execution(start=None, expected="FAIL")
+
+    def _check_allow_with_execution(self, start, expected):
+        doc = data()
+        spans = doc["resourceSpans"][0]["scopeSpans"][0]["spans"]
+        gate = json.loads(json.dumps(spans[0]))
+        gate["events"][0]["attributes"][-1]["value"]["stringValue"] = "require_approval"
+        gate["events"][0]["timeUnixNano"] = "100"
+        spans.insert(0, gate)
+        tool = {"name": "execute_tool send_notification",
+                "attributes": [
+                    {"key": "gen_ai.operation.name", "value": {"stringValue": "execute_tool"}},
+                    {"key": "gen_ai.tool.call.id", "value": {"stringValue": "call-1"}},
+                    {"key": "gen_ai.agent.execution.id", "value": {"stringValue": "run-1"}}]}
+        if start is not None:
+            tool["startTimeUnixNano"] = start
+        spans.append(tool)
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "allow-execution.json"
+            p.write_text(json.dumps(doc))
+            self.assertEqual(assess(p)["status"], expected)
+
 if __name__ == "__main__":
     unittest.main()
